@@ -1,0 +1,51 @@
+From: jeremy@myfacetwittertube.com
+Subject: [PATCH] abliterate: handle empty whitened-SVD result at early layers
+
+When extracting whitened-SVD directions from very early layers (e.g. layer 0),
+the SVD frequently returns an empty `result.directions` tensor because no
+significant variance is concentrated along the harmful-vs-harmless contrast
+this early in the residual stream. The original code unconditionally indexes
+`result.directions[0]`, which raises IndexError and aborts the entire
+abliteration pipeline.
+
+This was reproducible on Gemma-4-E2B-it (DENSE+REASONING; arch profile bumps
+n_directions to 12 → small-model cap to 2 → still hits the multi-direction
+SVD path) and is the load-bearing failure for any whitened-SVD method on
+small models.
+
+Fix: detect the empty result and skip the layer (leaving its entry unset
+in self.refusal_directions, which downstream code already treats as "no
+direction at this layer").
+
+Apply with: cd /path/to/OBLITERATUS && git apply 0001-whitened-svd-empty-result.patch
+
+---
+ obliteratus/abliterate.py | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/obliteratus/abliterate.py b/obliteratus/abliterate.py
+index XXXXXXX..YYYYYYY 100644
+--- a/obliteratus/abliterate.py
++++ b/obliteratus/abliterate.py
+@@ -1635,11 +1635,20 @@ class AbliterationPipeline:
+             elif whitened_extractor is not None:
+                 # Whitened SVD: normalize by harmless covariance first
+                 result = whitened_extractor.extract(
+                     self._harmful_acts[idx],
+                     self._harmless_acts[idx],
+                     n_directions=n_dirs,
+                     layer_idx=idx,
+                 )
++                if result.directions.shape[0] == 0:
++                    # Whitened SVD found no significant direction at this layer
++                    # (typical at very early layers where refusal hasn't formed
++                    # yet). Skip — leave self.refusal_directions[idx] unset so
++                    # downstream code treats this layer as no-op.
++                    if idx < 5 or idx == n_layers - 1:
++                        self.log(
++                            f"  layer {idx}: whitened SVD returned empty (no significant direction); skipping"
++                        )
++                    continue
+                 self.refusal_subspaces[idx] = result.directions
+                 self.refusal_directions[idx] = result.directions[0]
+                 norms[idx] = result.singular_values.sum().item()
