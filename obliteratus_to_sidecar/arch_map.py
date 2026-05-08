@@ -28,6 +28,7 @@ HF_TO_GGUF_ARCH: dict[str, str] = {
     # GLM family
     "Glm4ForCausalLM": "glm4",
     "Glm4MoeForCausalLM": "glm4-moe",
+    "Glm4MoeLiteForCausalLM": "glm4-moe",  # GLM-4.7-Flash (30B-A3B, 64 experts)
     "ChatGLMForConditionalGeneration": "chatglm",
     # Llama / Mistral
     "LlamaForCausalLM": "llama",
