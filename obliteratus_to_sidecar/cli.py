@@ -111,14 +111,18 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print()
-    print(f"  Sidecar GGUF:           {result.sidecar_path}")
-    print(f"  OBLITERATUS output dir: {result.obliteratus_output_dir}")
-    print(f"  Arch:                   {result.arch}")
-    print(f"  n_embd:                 {result.n_embd}")
-    print(f"  Dense layers:           {result.n_dense_layers}")
-    print(f"  Expert layers:          {result.n_expert_layers}"
+    print(f"  Sidecar GGUF (full):     {result.sidecar_path}")
+    if result.sidecar_selected_path is not None:
+        print(f"  Sidecar GGUF (selected): {result.sidecar_selected_path}")
+    print(f"  OBLITERATUS output dir:  {result.obliteratus_output_dir}")
+    print(f"  Arch:                    {result.arch}")
+    print(f"  n_embd:                  {result.n_embd}")
+    print(f"  Dense layers (captured): {result.n_dense_layers}")
+    if result.sidecar_selected_path is not None:
+        print(f"  Dense layers (selected): {result.n_dense_layers_selected}")
+    print(f"  Expert layers:           {result.n_expert_layers}"
           f" (with {result.n_experts_per_layer} experts each)")
-    print(f"  Method:                 {result.method}")
+    print(f"  Method:                  {result.method}")
     print()
     print("Try with frankenturbo2 llama-cli:")
     print(f"  llama-cli -m <base.gguf> --sidecar-vectors {result.sidecar_path} ...")

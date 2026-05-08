@@ -27,8 +27,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExtractionResult:
     sidecar_path: Path
+    sidecar_selected_path: Path | None
     obliteratus_output_dir: Path
     n_dense_layers: int
+    n_dense_layers_selected: int
     n_expert_layers: int
     n_experts_per_layer: int
     arch: str
@@ -290,7 +292,7 @@ def run_extraction(
                 len(expert_layer_indices), n_experts_total,
             )
 
-    # ── Emit sidecar GGUF ────────────────────────────────────────────────
+    # ── Emit "full" sidecar GGUF (all distilled layers) ──────────────────
     _emit_sidecar_gguf(
         output_path=output_path,
         arch=arch,
@@ -302,7 +304,77 @@ def run_extraction(
         scale=1.0,
         threshold=0.0,
     )
-    logger.info("Wrote sidecar GGUF to %s", output_path)
+    logger.info("Wrote full sidecar GGUF to %s", output_path)
+
+    # ── Emit "selected" sidecar GGUF (OBLITERATUS-chosen layer subset) ──
+    # OBLITERATUS's _distill() populates self._strong_layers with the layer
+    # indices its method-specific layer-selection algorithm picked for the
+    # weight-baked excise stage. Filtering our captured directions to just
+    # these gives an apples-to-apples reference for engine A/B comparison
+    # against OBLITERATUS-modified-as-GGUF baseline.
+    sidecar_selected_path: Path | None = None
+    n_selected = 0
+    strong = list(getattr(pipeline, "_strong_layers", []) or [])
+    if strong:
+        # Intersect with what we actually captured (some _strong_layers entries
+        # may have been skipped by the SVD-empty patch).
+        strong_set = set(strong)
+        selected_layers = [L for L in chosen_layers if L in strong_set]
+        if selected_layers:
+            # Build the selected dense sub-tensor, preserving row order to match
+            # selected_layers.
+            layer_to_row = {L: i for i, L in enumerate(chosen_layers)}
+            row_idx = np.array([layer_to_row[L] for L in selected_layers], dtype=np.int64)
+            dense_selected = dense[row_idx, :]
+            n_selected = len(selected_layers)
+
+            # Per-expert directions are MoE-only; if present, filter rows whose
+            # layer index is in the selected set, otherwise pass through unchanged.
+            expert_layer_indices_sel = expert_layer_indices
+            expert_directions_sel = expert_directions
+            if expert_directions is not None and expert_layer_indices:
+                e_keep = [(j, L) for j, L in enumerate(expert_layer_indices) if L in strong_set]
+                if e_keep:
+                    e_rows = np.array([j for j, _ in e_keep], dtype=np.int64)
+                    expert_layer_indices_sel = [L for _, L in e_keep]
+                    expert_directions_sel = expert_directions[e_rows, :, :]
+                else:
+                    expert_layer_indices_sel = []
+                    expert_directions_sel = None
+
+            sel_name = output_path.name
+            if sel_name.endswith(".abl.gguf"):
+                sel_name = sel_name[: -len(".abl.gguf")] + ".selected.abl.gguf"
+            else:
+                sel_name = output_path.stem + ".selected" + output_path.suffix
+            sidecar_selected_path = output_path.with_name(sel_name)
+
+            _emit_sidecar_gguf(
+                output_path=sidecar_selected_path,
+                arch=arch,
+                n_embd=n_embd,
+                chosen_layers=selected_layers,
+                dense_directions=dense_selected,
+                expert_layer_indices=expert_layer_indices_sel,
+                expert_directions=expert_directions_sel,
+                scale=1.0,
+                threshold=0.0,
+            )
+            logger.info(
+                "Wrote selected sidecar GGUF (%d of %d layers) to %s",
+                n_selected, len(chosen_layers), sidecar_selected_path,
+            )
+        else:
+            logger.warning(
+                "OBLITERATUS _strong_layers selection (%d entries) had no overlap "
+                "with captured directions (%d layers); skipping selected sidecar.",
+                len(strong), len(chosen_layers),
+            )
+    else:
+        logger.info(
+            "OBLITERATUS did not populate _strong_layers; skipping selected sidecar "
+            "(method may not have run a layer-selection stage)."
+        )
 
     # ── Optional cleanup of modified safetensors ─────────────────────────
     if not keep_modified_safetensors:
@@ -319,19 +391,26 @@ def run_extraction(
         "arch": arch,
         "n_embd": n_embd,
         "n_dense_layers": len(chosen_layers),
+        "n_dense_layers_selected": n_selected,
+        "captured_layers": chosen_layers,
+        "selected_layers": list(strong),
         "n_expert_layers": len(expert_layer_indices),
         "n_experts_per_layer": int(n_experts_total),
         "obliteratus_output_dir": str(obliteratus_output_dir),
         "obliteratus_result_path": str(result_path),
         "sidecar_path": str(output_path),
+        "sidecar_selected_path": (str(sidecar_selected_path)
+                                   if sidecar_selected_path is not None else None),
         "kept_modified_safetensors": keep_modified_safetensors,
     }
     output_path.with_suffix(".meta.json").write_text(json.dumps(meta, indent=2))
 
     return ExtractionResult(
         sidecar_path=output_path,
+        sidecar_selected_path=sidecar_selected_path,
         obliteratus_output_dir=obliteratus_output_dir,
         n_dense_layers=len(chosen_layers),
+        n_dense_layers_selected=n_selected,
         n_expert_layers=len(expert_layer_indices),
         n_experts_per_layer=int(n_experts_total),
         arch=arch,
