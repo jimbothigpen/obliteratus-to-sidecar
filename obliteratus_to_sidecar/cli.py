@@ -35,7 +35,16 @@ def _add_args(p: argparse.ArgumentParser) -> None:
                    help="Skip OBLITERATUS's _rebirth stage entirely (no modified safetensors "
                         "ever written). Faster + sidesteps the crashy multi-shard save under "
                         "memory pressure. Use when sidecar-only deployment is enough.")
-    p.add_argument("--device", default="auto", help="torch device (default: auto)")
+    p.add_argument("--device", default="auto",
+                   help="torch device. 'auto' (default) lets accelerate distribute the model "
+                        "across GPU+CPU+disk via device_map='auto'. 'cpu' forces CPU-only "
+                        "loading (no VRAM used — leaves the GPU free for other workloads). "
+                        "'cuda' / 'cuda:N' forces a specific GPU.")
+    p.add_argument("--offload-folder", type=Path, default=None,
+                   help="Where Accelerate's device_map='auto' should spill layers that don't "
+                        "fit in GPU+CPU. Defaults to a /tmp dir auto-created by OBLITERATUS, "
+                        "but /tmp is tmpfs (16GB) on ai00 — point this at ceph (e.g. "
+                        "/mnt/cephfs/.../offload) for 100B+ models.")
     p.add_argument("--dtype", default="float16",
                    help="torch dtype (default: float16). Choices: float32, float16, bfloat16.")
     p.add_argument("--quantization", default=None,
@@ -102,6 +111,7 @@ def main(argv: list[str] | None = None) -> int:
             keep_modified_safetensors=not args.no_keep_modified,
             trust_remote_code=args.trust_remote_code,
             skip_rebirth=args.skip_rebirth,
+            offload_folder=args.offload_folder,
             on_log=_on_log,
         )
     except Exception as e:

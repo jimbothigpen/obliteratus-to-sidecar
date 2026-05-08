@@ -169,6 +169,7 @@ def run_extraction(
     keep_modified_safetensors: bool = True,
     trust_remote_code: bool = False,
     skip_rebirth: bool = False,
+    offload_folder: Path | None = None,
     on_log: Any = None,
 ) -> ExtractionResult:
     """Run OBLITERATUS end-to-end, then emit a sidecar GGUF from the
@@ -223,6 +224,10 @@ def run_extraction(
     )
     if quantization is not None:
         kwargs["quantization"] = quantization
+    if offload_folder is not None:
+        offload_folder = Path(offload_folder)
+        offload_folder.mkdir(parents=True, exist_ok=True)
+        kwargs["offload_folder"] = str(offload_folder)
     if n_directions is not None:
         kwargs["n_directions"] = n_directions
     if direction_method is not None:

@@ -14,9 +14,10 @@ CEPH=/mnt/cephfs/0/Container/systems/ai00/users/builduser
 RUN_DIR=$CEPH/validation-runs
 SIDECAR_DIR=$CEPH/sidecars
 HF_CACHE=$CEPH/hf-cache
+OFFLOAD_DIR=$CEPH/offload
 VENV=/usr/src/llama-forks/obliteratus-to-sidecar/.venv
 
-mkdir -p "$RUN_DIR" "$SIDECAR_DIR"
+mkdir -p "$RUN_DIR" "$SIDECAR_DIR" "$OFFLOAD_DIR"
 
 slug() {
     echo "$1" | tr '/' '_'
@@ -53,7 +54,8 @@ run_one() {
     echo "[$(date -Iseconds)] START: $model / $method (per_expert=$per_expert)" | tee -a "$RUN_DIR/_overall.log"
 
     local args=(--hf-model "$model" --method "$method" --output "$sidecar"
-                --trust-remote-code --skip-rebirth -v)
+                --trust-remote-code --skip-rebirth
+                --offload-folder "$OFFLOAD_DIR/$s.$method" -v)
     [[ "$per_expert" == "1" ]] && args+=(--per-expert)
 
     HF_HUB_CACHE="$HF_CACHE" \
