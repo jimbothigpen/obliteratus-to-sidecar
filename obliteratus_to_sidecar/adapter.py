@@ -126,6 +126,9 @@ def _emit_sidecar_gguf(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     w = gguf.GGUFWriter(str(output_path), "abl")
+    # sidecar.type discriminator (new in handler-registry refactor; engine
+    # defaults to "abliteration" if missing for back-compat with v1 sidecars).
+    w.add_string("sidecar.type", "abliteration")
     w.add_string("abl.arch", arch)
     w.add_uint32("abl.n_embd", n_embd)
     w.add_array("abl.layer_indices", chosen_layers)
