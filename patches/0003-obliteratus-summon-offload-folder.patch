@@ -1,0 +1,48 @@
+From: jeremy@myfacetwittertube.com
+Subject: [PATCH] obliteratus _summon: thread offload_folder attr to load_model
+
+OBLITERATUS's `load_model()` already supports an `offload_folder` kwarg for
+Accelerate disk-offload, but `AbliterationPipeline._summon()` doesn't pass
+it through and the constructor doesn't accept it as an argument.
+
+To allow consumers (like obliteratus-to-sidecar) to specify the offload dir
+without a deeper API refactor, _summon now reads `getattr(self, "offload_folder", None)`
+and threads it to load_model. Consumers attach the path as an instance attr
+on the pipeline before calling .run().
+
+Why this matters: ai00's /tmp is tmpfs (16GB). The auto-created
+/tmp/obliteratus_offload_* either fills RAM or trips no-space-left for
+100B+ models. Pointing offload_folder at ceph (/mnt/cephfs/...) gives
+unbounded disk capacity for unattended multi-day runs.
+
+Apply with: cd /path/to/OBLITERATUS && git apply 0003-obliteratus-summon-offload-folder.patch
+
+---
+ obliteratus/abliterate.py | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/obliteratus/abliterate.py b/obliteratus/abliterate.py
+@@ -976,11 +976,19 @@ class AbliterationPipeline:
+-        self.handle = load_model(
+-            model_name=self.model_name,
+-            task="causal_lm",
+-            device=self.device,
+-            dtype=self.dtype,
+-            trust_remote_code=self.trust_remote_code,
+-            quantization=self.quantization,
+-        )
++        _load_kwargs = dict(
++            model_name=self.model_name,
++            task="causal_lm",
++            device=self.device,
++            dtype=self.dtype,
++            trust_remote_code=self.trust_remote_code,
++            quantization=self.quantization,
++        )
++        # Optional disk-offload directory — set via the `offload_folder` attr
++        # (not a constructor kwarg in upstream; obliteratus-to-sidecar attaches
++        # it before calling .run()).
++        _ofd = getattr(self, "offload_folder", None)
++        if _ofd is not None:
++            _load_kwargs["offload_folder"] = str(_ofd)
++        self.handle = load_model(**_load_kwargs)

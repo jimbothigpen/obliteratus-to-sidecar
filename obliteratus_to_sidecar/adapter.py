@@ -224,10 +224,12 @@ def run_extraction(
     )
     if quantization is not None:
         kwargs["quantization"] = quantization
+    # offload_folder is NOT a constructor kwarg in upstream OBLITERATUS; it's
+    # attached as an instance attribute below and read by our patched _summon
+    # via getattr(self, "offload_folder", None).
     if offload_folder is not None:
         offload_folder = Path(offload_folder)
         offload_folder.mkdir(parents=True, exist_ok=True)
-        kwargs["offload_folder"] = str(offload_folder)
     if n_directions is not None:
         kwargs["n_directions"] = n_directions
     if direction_method is not None:
@@ -260,6 +262,11 @@ def run_extraction(
         pipeline = _DirectionOnlyPipeline(**kwargs)
     else:
         pipeline = AbliterationPipeline(**kwargs)
+
+    # Attach offload_folder as an instance attr; our vendored patch in
+    # OBLITERATUS's _summon reads this and threads it into load_model.
+    if offload_folder is not None:
+        pipeline.offload_folder = str(offload_folder)
 
     logger.info("Running OBLITERATUS pipeline (this may take a long time)...")
     result_path = pipeline.run()
