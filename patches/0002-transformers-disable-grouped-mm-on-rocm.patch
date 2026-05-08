@@ -1,0 +1,45 @@
+From: jeremy@myfacetwittertube.com
+Subject: [PATCH] transformers/integrations/moe: force fallback grouped_mm on ROCm
+
+torch._grouped_mm and torch.nn.functional.grouped_mm have no ROCm backend
+as of torch 2.9.1+rocm6.4. Calling them raises:
+
+    RuntimeError: grouped gemm is not supported on ROCM
+
+`_can_use_grouped_mm` checks `weight.device.type == "cuda"` to gate the CUDA
+fast path, but ROCm/HIP devices also report device.type=="cuda" in PyTorch.
+The function then calls `torch.cuda.get_device_capability` which on AMD
+returns a uarch tuple and passes the >=(8,0) check, so `_can_use_grouped_mm`
+returns True and we hit the unimplemented op.
+
+This patch detects ROCm via `torch.version.hip` inside the cuda branch and
+returns False, forcing the loop-based `_grouped_mm_fallback` path that
+already exists in the same file.
+
+Affects all MoE models with the new transformers grouped-MoE path
+(GLM-4.7-Flash, GPT-OSS-20B, Llama-4 Scout/Maverick, Qwen3-30B-A3B, etc.).
+
+Apply with:
+  cd /path/to/transformers && git apply 0002-transformers-disable-grouped-mm-on-rocm.patch
+
+Or directly to a venv install:
+  patch /path/to/.venv/lib/python*/site-packages/transformers/integrations/moe.py < 0002-...
+
+---
+ src/transformers/integrations/moe.py | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/src/transformers/integrations/moe.py b/src/transformers/integrations/moe.py
+@@ -287,6 +287,11 @@ def _can_use_grouped_mm(input, weight, offs):
+     # On CUDA, `grouped_mm` availability also depends on GPU compute capability:
+     # `torch.nn.functional.grouped_mm` in torch>=2.10 and `torch._grouped_mm` in torch>=2.9 support SM80+
+     # but older `torch._grouped_mm` requires SM90+.
+     if weight.device.type == "cuda":
++        # ROCm/HIP advertises device.type=="cuda" but torch._grouped_mm has no
++        # ROCm backend yet (raises "grouped gemm is not supported on ROCM").
++        # Force fallback so MoE forward works on AMD GPUs.
++        if getattr(torch.version, "hip", None) is not None:
++            return False
+         if hasattr(torch.nn.functional, "grouped_mm"):
+             return torch.cuda.get_device_capability(weight.device) >= (8, 0)
+         if hasattr(torch, "_grouped_mm"):
