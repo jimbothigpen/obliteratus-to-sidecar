@@ -14,7 +14,10 @@ CEPH=/mnt/cephfs/0/Container/systems/ai00/users/builduser
 RUN_DIR=$CEPH/validation-runs
 SIDECAR_DIR=$CEPH/sidecars
 HF_CACHE=$CEPH/hf-cache
-OFFLOAD_DIR=$CEPH/offload
+# Offload to LOCAL nvme on ai00 — ceph is 7-10x slower for offload reads,
+# and pointing offload at ceph triggered Accelerate to pre-stage buffer pages
+# in CPU RAM that pushed Qwopus 9B into OOM territory on ai00's 32GiB system.
+OFFLOAD_DIR=/home/builduser/offload-ai00
 VENV=/usr/src/llama-forks/obliteratus-to-sidecar/.venv
 
 mkdir -p "$RUN_DIR" "$SIDECAR_DIR" "$OFFLOAD_DIR"
@@ -62,6 +65,8 @@ run_one() {
     TMPDIR=/home/builduser/.pip-tmp \
     PYTORCH_HIP_ALLOC_CONF=expandable_segments:True \
     HSA_OVERRIDE_GFX_VERSION=11.0.0 \
+    OBLITERATUS_MAX_MEMORY_GPU=80GiB \
+    OBLITERATUS_MAX_MEMORY_CPU=20GiB \
         "$VENV/bin/obliteratus-to-sidecar" "${args[@]}" >"$logfile" 2>&1
     local rc=$?
 
