@@ -53,7 +53,7 @@ run_one() {
     echo "[$(date -Iseconds)] START: $model / $method (per_expert=$per_expert)" | tee -a "$RUN_DIR/_overall.log"
 
     local args=(--hf-model "$model" --method "$method" --output "$sidecar"
-                --trust-remote-code -v)
+                --trust-remote-code --skip-rebirth -v)
     [[ "$per_expert" == "1" ]] && args+=(--per-expert)
 
     HF_HUB_CACHE="$HF_CACHE" \

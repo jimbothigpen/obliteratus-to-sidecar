@@ -25,6 +25,7 @@ HF_TO_GGUF_ARCH: dict[str, str] = {
     # Qwen 3.5 (Jackrong fork uses the same arch class)
     "Qwen35ForCausalLM": "qwen35",
     "Qwen3_5ForCausalLM": "qwen35",
+    "Qwen3_5ForConditionalGeneration": "qwen35",  # multimodal Qwopus variant
     # GLM family
     "Glm4ForCausalLM": "glm4",
     "Glm4MoeForCausalLM": "glm4-moe",

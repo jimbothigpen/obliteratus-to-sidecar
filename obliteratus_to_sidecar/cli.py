@@ -31,6 +31,10 @@ def _add_args(p: argparse.ArgumentParser) -> None:
                    help="Delete OBLITERATUS's modified safetensors after capturing the "
                         "directions. Saves disk but means we lose the weight-baked baseline "
                         "for A/B comparison.")
+    p.add_argument("--skip-rebirth", action="store_true",
+                   help="Skip OBLITERATUS's _rebirth stage entirely (no modified safetensors "
+                        "ever written). Faster + sidesteps the crashy multi-shard save under "
+                        "memory pressure. Use when sidecar-only deployment is enough.")
     p.add_argument("--device", default="auto", help="torch device (default: auto)")
     p.add_argument("--dtype", default="float16",
                    help="torch dtype (default: float16). Choices: float32, float16, bfloat16.")
@@ -97,6 +101,7 @@ def main(argv: list[str] | None = None) -> int:
             verify_sample_size=args.verify_sample_size,
             keep_modified_safetensors=not args.no_keep_modified,
             trust_remote_code=args.trust_remote_code,
+            skip_rebirth=args.skip_rebirth,
             on_log=_on_log,
         )
     except Exception as e:

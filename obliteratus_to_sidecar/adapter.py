@@ -166,6 +166,7 @@ def run_extraction(
     verify_sample_size: int | None = None,
     keep_modified_safetensors: bool = True,
     trust_remote_code: bool = False,
+    skip_rebirth: bool = False,
     on_log: Any = None,
 ) -> ExtractionResult:
     """Run OBLITERATUS end-to-end, then emit a sidecar GGUF from the
@@ -235,13 +236,30 @@ def run_extraction(
     if on_log is not None:
         kwargs["on_log"] = on_log
 
-    logger.info("Constructing AbliterationPipeline with method=%s, per_expert=%s",
-                method, per_expert)
-    pipeline = AbliterationPipeline(**kwargs)
+    logger.info("Constructing AbliterationPipeline with method=%s, per_expert=%s, skip_rebirth=%s",
+                method, per_expert, skip_rebirth)
+
+    if skip_rebirth:
+        # Subclass to skip the safetensors save. We only need pipeline state for
+        # sidecar emission; saving 18-60GB of modified weights to disk is the
+        # crashy step on memory-constrained hosts and is unnecessary for our flow.
+        class _DirectionOnlyPipeline(AbliterationPipeline):  # type: ignore[misc]
+            def _rebirth(self) -> "Path":
+                self._emit("rebirth", "running",
+                           "Skipping safetensors save (--skip-rebirth)")
+                p = Path(self.output_dir) / ".skipped_rebirth"
+                self._emit("rebirth", "done", "Skipped (no safetensors written)")
+                return p
+        pipeline = _DirectionOnlyPipeline(**kwargs)
+    else:
+        pipeline = AbliterationPipeline(**kwargs)
 
     logger.info("Running OBLITERATUS pipeline (this may take a long time)...")
     result_path = pipeline.run()
-    logger.info("OBLITERATUS complete; modified safetensors at %s", result_path)
+    if skip_rebirth:
+        logger.info("OBLITERATUS pipeline run complete (rebirth skipped)")
+    else:
+        logger.info("OBLITERATUS complete; modified safetensors at %s", result_path)
 
     # ── Capture directions from pipeline state ────────────────────────────
     refusal_directions = getattr(pipeline, "refusal_directions", {})
