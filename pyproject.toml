@@ -19,8 +19,11 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
+# NOTE: `obliteratus` is not on PyPI — install it from source first, e.g.:
+#   pip install git+https://github.com/elder-plinius/OBLITERATUS.git
+# obliteratus-to-sidecar imports `obliteratus.abliterate` at runtime and will
+# fail with a useful error message if it's not installed.
 dependencies = [
-    "obliteratus>=0.1.2",
     "torch>=2.0",
     "transformers>=4.40",
     "numpy>=1.24",
