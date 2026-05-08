@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "obliteratus-to-sidecar"
+version = "0.1.0"
+description = "Adapter that runs OBLITERATUS as a direction-extraction backend and emits a runtime sidecar GGUF for the frankenturbo2 llama.cpp fork"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+keywords = ["abliteration", "refusal-removal", "llama-cpp", "obliteratus", "sidecar"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "obliteratus>=0.1.2",
+    "torch>=2.0",
+    "transformers>=4.40",
+    "numpy>=1.24",
+    "gguf>=0.10",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "ruff", "mypy"]
+
+[project.scripts]
+obliteratus-to-sidecar = "obliteratus_to_sidecar.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["obliteratus_to_sidecar*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
