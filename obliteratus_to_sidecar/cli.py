@@ -32,7 +32,8 @@ def _add_args(p: argparse.ArgumentParser) -> None:
                         "directions. Saves disk but means we lose the weight-baked baseline "
                         "for A/B comparison.")
     p.add_argument("--device", default="auto", help="torch device (default: auto)")
-    p.add_argument("--dtype", default="auto", help="torch dtype (default: auto)")
+    p.add_argument("--dtype", default="float16",
+                   help="torch dtype (default: float16). Choices: float32, float16, bfloat16.")
     p.add_argument("--quantization", default=None,
                    help="OBLITERATUS quantization mode for loading (4bit, 8bit, none).")
     p.add_argument("--trust-remote-code", action="store_true",
