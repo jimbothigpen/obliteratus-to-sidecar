@@ -165,6 +165,7 @@ def run_extraction(
     large_model_mode: bool = False,
     verify_sample_size: int | None = None,
     keep_modified_safetensors: bool = True,
+    trust_remote_code: bool = False,
     on_log: Any = None,
 ) -> ExtractionResult:
     """Run OBLITERATUS end-to-end, then emit a sidecar GGUF from the
@@ -191,7 +192,7 @@ def run_extraction(
         from obliteratus_to_sidecar.arch_map import hf_to_gguf_arch
         from transformers import AutoConfig  # type: ignore
 
-        cfg = AutoConfig.from_pretrained(hf_model, trust_remote_code=True)
+        cfg = AutoConfig.from_pretrained(hf_model, trust_remote_code=trust_remote_code)
         archs = getattr(cfg, "architectures", None) or []
         for hf_arch_name in archs:
             arch_guess = hf_to_gguf_arch(hf_arch_name)
@@ -215,6 +216,7 @@ def run_extraction(
         device=device,
         dtype=dtype,
         large_model_mode=large_model_mode,
+        trust_remote_code=trust_remote_code,
     )
     if quantization is not None:
         kwargs["quantization"] = quantization

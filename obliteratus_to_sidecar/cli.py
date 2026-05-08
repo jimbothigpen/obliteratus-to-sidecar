@@ -35,6 +35,9 @@ def _add_args(p: argparse.ArgumentParser) -> None:
     p.add_argument("--dtype", default="auto", help="torch dtype (default: auto)")
     p.add_argument("--quantization", default=None,
                    help="OBLITERATUS quantization mode for loading (4bit, 8bit, none).")
+    p.add_argument("--trust-remote-code", action="store_true",
+                   help="Pass trust_remote_code=True to OBLITERATUS / transformers loaders. "
+                        "Required for some 2026 archs (e.g. Gemma4, GLM4-MoE-Lite).")
     p.add_argument("--n-directions", type=int, default=None,
                    help="Override n_directions (default: from method preset)")
     p.add_argument("--direction-method", default=None,
@@ -92,6 +95,7 @@ def main(argv: list[str] | None = None) -> int:
             large_model_mode=args.large_model_mode,
             verify_sample_size=args.verify_sample_size,
             keep_modified_safetensors=not args.no_keep_modified,
+            trust_remote_code=args.trust_remote_code,
             on_log=_on_log,
         )
     except Exception as e:
