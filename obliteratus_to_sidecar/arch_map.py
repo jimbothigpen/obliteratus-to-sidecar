@@ -9,14 +9,23 @@ If the user's target isn't in the table, they can override via CLI `--arch`.
 """
 from __future__ import annotations
 
-# HF config architecture class name → llama.cpp/GGUF general.architecture
+# HF config architecture class name → llama.cpp/GGUF general.architecture.
+#
+# These MUST match the canonical strings in llama.cpp's `LLM_ARCH_NAMES`
+# (frankenturbo2 src/llama-arch.cpp). A mismatch makes the engine reject
+# the sidecar at load time. Verify via:
+#   grep -E "LLM_ARCH_[A-Z_]+ *," frankenturbo2/src/llama-arch.cpp | awk -F\" '{print $2}'
+#
+# In particular, do NOT carry HF-side variant suffixes like "-iswa"
+# (Interleaved Sliding Window Attention) into the GGUF arch tag —
+# llama.cpp's convert_hf_to_gguf.py canonicalizes those away.
 HF_TO_GGUF_ARCH: dict[str, str] = {
     # Gemma family
     "Gemma2ForCausalLM": "gemma2",
     "Gemma3ForCausalLM": "gemma3",
     "Gemma3ForConditionalGeneration": "gemma3",
-    "Gemma4ForCausalLM": "gemma4-iswa",
-    "Gemma4ForConditionalGeneration": "gemma4-iswa",
+    "Gemma4ForCausalLM": "gemma4",
+    "Gemma4ForConditionalGeneration": "gemma4",
     # Qwen family
     "Qwen2ForCausalLM": "qwen2",
     "Qwen2MoeForCausalLM": "qwen2moe",
@@ -28,8 +37,8 @@ HF_TO_GGUF_ARCH: dict[str, str] = {
     "Qwen3_5ForConditionalGeneration": "qwen35",  # multimodal Qwopus variant
     # GLM family
     "Glm4ForCausalLM": "glm4",
-    "Glm4MoeForCausalLM": "glm4-moe",
-    "Glm4MoeLiteForCausalLM": "glm4-moe",  # GLM-4.7-Flash (30B-A3B, 64 experts)
+    "Glm4MoeForCausalLM": "glm4moe",
+    "Glm4MoeLiteForCausalLM": "glm4moe",  # GLM-4.7-Flash (30B-A3B, 64 experts)
     "ChatGLMForConditionalGeneration": "chatglm",
     # Llama / Mistral
     "LlamaForCausalLM": "llama",
@@ -40,6 +49,8 @@ HF_TO_GGUF_ARCH: dict[str, str] = {
     "DeepseekV3ForCausalLM": "deepseek2",
     # MiniMax
     "MiniMaxM2ForCausalLM": "minimax-m2",
+    # OpenAI gpt-oss
+    "GptOssForCausalLM": "gpt-oss",
 }
 
 
