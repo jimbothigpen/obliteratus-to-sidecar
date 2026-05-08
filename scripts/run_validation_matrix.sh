@@ -59,6 +59,7 @@ run_one() {
     HF_HUB_CACHE="$HF_CACHE" \
     TMPDIR=/home/builduser/.pip-tmp \
     PYTORCH_HIP_ALLOC_CONF=expandable_segments:True \
+    HSA_OVERRIDE_GFX_VERSION=11.0.0 \
         "$VENV/bin/obliteratus-to-sidecar" "${args[@]}" >"$logfile" 2>&1
     local rc=$?
 
