@@ -1,0 +1,60 @@
+# NOTICE — runtime dependency on AGPL-3.0 software
+
+`obliteratus-to-sidecar` is licensed under the **MIT License**. **However,
+its CLI (`obliteratus_to_sidecar.cli:main`) imports
+[OBLITERATUS](https://github.com/elder-plinius/OBLITERATUS) at runtime
+to drive the abliteration pipeline.** OBLITERATUS is dual-licensed under
+**GNU Affero General Public License v3.0 (AGPL-3.0)** and a separate
+commercial license.
+
+We do **not** redistribute OBLITERATUS, modify OBLITERATUS's source in
+this repository, or bundle OBLITERATUS's code. Anyone running this tool
+installs OBLITERATUS separately (e.g.
+`pip install git+https://github.com/elder-plinius/OBLITERATUS.git`) and
+runs unmodified upstream OBLITERATUS. Consult OBLITERATUS's own LICENSE
+for terms governing your use of OBLITERATUS itself.
+
+## What this means in practice
+
+- **Reading / using the MIT code in this repo (the CLI wrapper, the
+  GGUF emitter, the `arch_map` translation, the validation scripts):**
+  standard MIT terms apply. You may use, modify, and redistribute the
+  wrapper code freely.
+- **Running the CLI:** you are running unmodified OBLITERATUS alongside
+  this MIT wrapper. The AGPL applies to your use of OBLITERATUS. In
+  particular, if you make OBLITERATUS available to others over a
+  network (e.g. as part of a hosted abliteration service), AGPL-3.0
+  may obligate you to publish your modified OBLITERATUS source — but
+  `obliteratus-to-sidecar` does not modify OBLITERATUS, so this
+  affects OBLITERATUS itself, not this wrapper.
+- **Forking `obliteratus-to-sidecar`:** you may relicense your fork
+  of *this repo's MIT-licensed code* however you like, but doing so
+  does not change OBLITERATUS's AGPL-3.0 terms.
+
+## About the patches in `patches/`
+
+The `patches/` directory contains four `.patch` files we authored to
+work around upstream bugs in OBLITERATUS, transformers, or related
+libraries:
+
+- `0001-whitened-svd-empty-result.patch` — handles empty whitened-SVD
+  results in OBLITERATUS's `_distill()` at three call sites
+- `0002-transformers-disable-grouped-mm-on-rocm.patch` — disables the
+  HF transformers grouped-MM path on ROCm where it's broken
+- `0003-obliteratus-summon-offload-folder.patch` — plumbs
+  `--offload-folder` through OBLITERATUS's pipeline attrs for explicit
+  disk-offload control
+- `0004-loader-max-memory-env-overrides.py` — a small Python loader
+  patch with env-var overrides for `max_memory`
+
+These patches are **our work product**, distributed under MIT as part
+of this repository. Applying any of them to OBLITERATUS produces a
+derivative work of OBLITERATUS, which **the user** then must comply
+with under AGPL-3.0 (or the OBLITERATUS commercial license, if they
+hold one). The patches themselves are just text describing changes;
+distributing them is fine.
+
+If you intend to vendor OBLITERATUS into a derived work, you must
+comply with OBLITERATUS's AGPL-3.0 terms — typically by relicensing
+your derived work under a compatible license and offering corresponding
+source.

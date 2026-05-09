@@ -88,30 +88,41 @@ run_one() {
 
 echo "[$(date -Iseconds)] === validation matrix start ===" >> "$RUN_DIR/_overall.log"
 
-# --- Gemma-4-E2B-it (DENSE+REASONING, ~5B effective) ---
-run_one google/gemma-4-E2B-it       optimized        0
-run_one google/gemma-4-E2B-it       gabliteration    0
-run_one google/gemma-4-E2B-it       spectral_cascade 0
+# Focused matrix v2 — drove the queue from the OBLITERATUS community
+# telemetry dataset (pliny-the-prompter/OBLITERATUS-TELEMETRY) instead of
+# guessing methods. For each model, run the top-2 methods by community
+# composite score in the model's bucket (model-specific where the dataset
+# has direct records, else bucket aggregate).
+#
+# Skipped:
+#  - GLM-4.7-Flash (per user, deferred to keep matrix wall time bounded)
+#  - Jackrong/Qwopus3.5-9B-v3 (zero community telemetry; swapped for the
+#    closest vanilla model with strong community data — Qwen/Qwen3.5-9B
+#    has 3,788 telemetry records, n=2,999 for `advanced` alone)
 
-# --- Qwopus3.5-9B (DENSE+REASONING, hybrid linear/softmax 3:1) ---
-run_one Jackrong/Qwopus3.5-9B-v3    spectral_cascade 0
-run_one Jackrong/Qwopus3.5-9B-v3    aggressive       0
-run_one Jackrong/Qwopus3.5-9B-v3    optimized        0
+# --- google/gemma-4-E2B-it (Dense Standard Tiny bucket, n=8) ---
+# bucket top: advanced (composite 0.7023), runner-up: basic (0.4092).
+run_one google/gemma-4-E2B-it       advanced         0
+# gemma/basic — DISABLED 2026-05-08: upstream OBLITERATUS bug. _distill()
+# crashes with `cannot convert float NaN to integer` at abliterate.py:1732
+# in the per-layer refusal-strength bar-print loop. Reproducible. Likely
+# triggered by NaN-valued activations from Gemma-4's SSM hybrid layers.
+# Re-enable after upstream patch.
+# run_one google/gemma-4-E2B-it       basic            0
 
-# --- gpt-oss-20b (SMALL_MOE+REASONING, 20B/A3.6B, Top-4 of 32 experts) ---
-# Pivot from Nemotron-3 — Mamba-2 hybrids hard-import mamba_ssm at module
-# load (CUDA-only, no CPU fallback) and are unviable on ai01. gpt-oss is
-# a standard transformer + MoE arch, supported in frankenturbo2 as
-# LLM_ARCH_OPENAI_MOE; no kernel gap. Smaller (~13 GB MXFP4 vs GLM's 59 GB
-# BF16) so ordered before GLM to land a working MoE+per-expert sidecar
-# faster.
-run_one openai/gpt-oss-20b          surgical         1
-run_one openai/gpt-oss-20b          aggressive       1
-run_one openai/gpt-oss-20b          nuclear          1
+# --- Qwen/Qwen3.5-9B (model-specific data, n=3,788) ---
+# top: advanced (2,999 runs), runner-up: basic (548 runs).
+run_one Qwen/Qwen3.5-9B             advanced         0
+run_one Qwen/Qwen3.5-9B             basic            0
 
-# --- GLM-4.7-Flash (SMALL_MOE+REASONING, 30B-A3B, 64 experts) ---
-run_one zai-org/GLM-4.7-Flash       surgical         1
-run_one zai-org/GLM-4.7-Flash       aggressive       1
-run_one zai-org/GLM-4.7-Flash       nuclear          1
+# --- openai/gpt-oss-20b — DISABLED 2026-05-08 ---
+# Both `surgical` and `optimized` with per_expert=1 hit upstream OBLITERATUS
+# shape bug in _compute_expert_granular_directions() at abliterate.py:2675:
+#   RuntimeError: mat1 and mat2 shapes cannot be multiplied (1x32 and 512x2880)
+# The EGA code expects (n_experts, hidden) but gets a wrong-shaped weight tensor
+# for gpt-oss-20b's 32 expert × 2880 hidden combination. Both methods route
+# through this code path under per_expert=1. Re-enable after upstream patch.
+# run_one openai/gpt-oss-20b          surgical         1
+# run_one openai/gpt-oss-20b          optimized        1
 
 echo "[$(date -Iseconds)] === validation matrix end ===" >> "$RUN_DIR/_overall.log"
