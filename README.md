@@ -40,6 +40,23 @@ pip install -e .
 OBLITERATUS itself is the heavy dependency; install it in the same venv (it
 pulls in torch/transformers/bitsandbytes).
 
+### Applying patches to OBLITERATUS
+
+After installing OBLITERATUS, apply the patches in `patches/` to fix known
+upstream issues. With the venv active, from the repo root:
+
+```bash
+SITE=$(python -c "import obliteratus, os; print(os.path.dirname(os.path.dirname(obliteratus.__file__)))")
+patch -d "$SITE" -p1 < patches/0001-whitened-svd-empty-result.patch
+patch -d "$SITE" -p1 < patches/0003-obliteratus-summon-offload-folder.patch
+python patches/0004-loader-max-memory-env-overrides.py "$SITE/obliteratus/loader.py"
+# 0002 is ROCm-only — skip on CPU nodes
+```
+
+- `0001` — fixes empty-SVD crash in `_distill()` on early layers
+- `0003` — plumbs `offload_folder` through `AbliterationPipeline._summon()`
+- `0004` — adds `OBLITERATUS_MAX_MEMORY_GPU` / `OBLITERATUS_MAX_MEMORY_CPU` env overrides
+
 ## Usage
 
 Basic dense extraction (works for any architecture):
