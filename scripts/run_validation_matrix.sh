@@ -18,7 +18,7 @@ HF_CACHE=$CEPH/hf-cache
 # and pointing offload at ceph triggered Accelerate to pre-stage buffer pages
 # in CPU RAM that pushed Qwopus 9B into OOM territory on ai00's 32GiB system.
 OFFLOAD_DIR=/home/builduser/offload-ai00
-VENV=/usr/src/llama-forks/obliteratus-to-sidecar/.venv
+VENV=/mnt/cephfs/0/Container/systems/ai00/users/builduser/projects/obliteratus-to-sidecar/src/jimbothigpen/obliteratus-to-sidecar/.venv
 
 mkdir -p "$RUN_DIR" "$SIDECAR_DIR" "$OFFLOAD_DIR"
 

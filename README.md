@@ -33,7 +33,7 @@ runtime artifact (sidecar GGUF + base GGUF, no weight modification).
 ## Install
 
 ```bash
-cd /usr/src/llama-forks/obliteratus-to-sidecar
+cd /path/to/obliteratus-to-sidecar
 pip install -e .
 ```
 
