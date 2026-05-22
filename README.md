@@ -2,7 +2,7 @@
 
 Run [OBLITERATUS](https://github.com/elder-plinius/OBLITERATUS) as a refusal-direction
 extraction backend and emit a runtime sidecar GGUF compatible with the
-[frankenturbo2](https://github.com/jimbothigpen/frankenturbo2) llama.cpp fork's
+[`jimbothigpen/llama.cpp`](https://github.com/jimbothigpen/llama.cpp) fork's
 sidecar adapter (`--sidecar-vectors path.abl.gguf`).
 
 ## What it does
@@ -66,5 +66,5 @@ final sidecar location.
 
 ## Output schema
 
-See `frankenturbo2/tools/abliterate/write_sidecar.py` docstring for the full
+See the `write_sidecar.py` docstring in the hub `llama.cpp` fork's abliterate tooling for the full
 GGUF schema. Per-expert keys are populated only when `--per-expert` is set.
